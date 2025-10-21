@@ -1,0 +1,2 @@
+/* Reemplazamos las tres directivas de importación por una sola línea que importa todo Tailwind CSS. */
+@import "tailwindcss";
