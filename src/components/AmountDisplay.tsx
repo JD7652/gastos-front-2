@@ -14,4 +14,4 @@ export default function AmountDisplay({ label, amount }: AmountDisplayProps) {
             <span className="font-black text-black">{formatCurrency(amount)}</span>
         </p>
     )
-} 
+}

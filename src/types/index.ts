@@ -1,6 +1,5 @@
 
 
-
 export type Expense = {
     id: string
     expenseName: string,
@@ -21,3 +20,16 @@ export type Category = {
     name: string
     icon: string
 }
+
+
+// export interface Expense {
+//     id: string; // ID asignado por el backend (UUID)
+//     nombreGasto: string;
+//     monto: number;
+//     fechaGasto: string; // Usaremos string para el formato ISO
+//     descripcion: string;
+//     categoriaId: string; // El UUID de la Categoría
+// }
+
+// // Interfaz para el cuerpo de la petición de creación (Draft)
+// export type DraftExpense = Omit<Expense, 'id'>;

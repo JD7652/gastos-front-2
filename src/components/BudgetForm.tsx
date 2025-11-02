@@ -1,8 +1,6 @@
 import { useMemo, useState } from "react"
 import { useBudget } from "../hooks/useBudget"
 
-
-
 export default function BudgetForm() {
 
     const [budget, setBudget] = useState(0)
@@ -22,8 +20,6 @@ export default function BudgetForm() {
         dispatch({ type: 'add-budget', payload: { budget } })
     }
 
-
-
     return (
         <form className="space-y-5" onSubmit={handleSubmit}>
             <div className="flex flex-col space-y-5">
@@ -40,23 +36,14 @@ export default function BudgetForm() {
                     value={budget}
                     onChange={handleChange}
                 />
-
             </div>
-
             <input
                 type="submit"
                 value={'Definir Presupuesto'}
-                className="bg-blue-600 hover:bg-blue-700 cursor-pointer w-full p-2 text-white font-black 
+                className="bg-blue-600 hover:bg-blue-700 cursor-pointer w-full p-2 text-white font-black
                 uppercase disabled:opacity-40"
                 disabled={isValid}
-
-
-
             />
-
-
-
-
         </form>
     )
 }

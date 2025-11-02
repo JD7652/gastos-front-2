@@ -195,7 +195,7 @@ export default function ExpenseForm() {
                     className="bg-slate-100 p-2 border-0"
                     value={expense.date}
                     onChange={handleChangeDate}
-                    locale="es-MX"
+                    locale="es-ES"
 
                 />
             </div>
