@@ -1,114 +1,81 @@
-import React, { useState } from 'react';
-import api from '../services/api.ts';
-import ErrorMessage from './ErrorMessage';
+import React, { useState } from "react";
+import api from "../services/api";
 
-interface LoginFormProps {
-    onSwitchToRegister: () => void;
-}
+type LoginFormProps = {
+    onLogin?: () => void;
+};
 
-export default function LoginForm({ onSwitchToRegister }: LoginFormProps) {
-    const [credentials, setCredentials] = useState({
-        correo: '',
-        contrasena: '',
-    });
-    const [error, setError] = useState('');
-    const [isLoggedIn, setIsLoggedIn] = useState(false);
+function LoginForm({ onLogin }: LoginFormProps) {
+    const [correo, setCorreo] = useState("");
+    const [contrasena, setContrasena] = useState("");
+    const [error, setError] = useState("");
 
-    const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const { name, value } = e.target;
-        setCredentials({
-            ...credentials,
-            [name]: value,
-        });
-    };
-
-    const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
         e.preventDefault();
-        setError('');
-
-        if (credentials.correo === '' || credentials.contrasena === '') {
-            setError('Todos los campos son obligatorios.');
-            return;
-        }
-
         try {
-            const response = await api.post('/auth/login', {
-                correo: credentials.correo,
-                contrasena: credentials.contrasena,
-            });
-
-            const token = response.data.token;
-
-            localStorage.setItem('authToken', token);
-            setIsLoggedIn(true);
-
-            console.log('✅ ¡Inicio de sesión exitoso! Token guardado.');
-            window.location.reload();
-
-        } catch (err: any) {
-            const errorMessage = err.response?.data?.message || 'Error de conexión. Verifica el servidor.';
-            setError(`Fallo en el login: ${errorMessage}`);
-            console.error('Error de login:', err.response?.data || err.message);
+            const response = await api.post("/auth/login", { correo, contrasena });
+            localStorage.setItem("authToken", response.data.token);
+            setError("");
+            if (onLogin) onLogin();
+        } catch (err) {
+            setError("Credenciales incorrectas o error de red");
         }
-    };
-
-    if (isLoggedIn) {
-        return (
-            <div className="text-center p-8 bg-white shadow rounded-lg">
-                <p className="text-xl text-green-600 font-bold">Sesión activa.</p>
-                <button
-                    onClick={() => { localStorage.removeItem('authToken'); setIsLoggedIn(false); window.location.reload(); }}
-                    className="mt-4 bg-red-500 text-white p-2 rounded"
-                >Cerrar Sesión</button>
-            </div>
-        );
     }
 
     return (
-        <form className="space-y-5 p-8 bg-white shadow rounded-lg w-full max-w-md mx-auto" onSubmit={handleSubmit}>
-            <legend className="uppercase text-center text-3xl font-black text-blue-600">
+        <form
+            onSubmit={handleSubmit}
+            className="bg-white p-8 rounded-xl shadow-lg max-w-md mx-auto flex flex-col gap-6"
+            style={{ minWidth: 320 }}
+        >
+            <h2 className="text-2xl font-extrabold text-blue-700 mb-2 text-center tracking-tight">
                 Iniciar Sesión
-            </legend>
-
-            {error && <ErrorMessage>{error}</ErrorMessage>}
-
-            <div className="flex flex-col gap-2">
-                <label htmlFor="correo" className="text-xl">Correo:</label>
-                <input
-                    type="email"
-                    id="correo"
-                    name="correo"
-                    placeholder="Tu correo electrónico"
-                    className="bg-slate-100 p-3 rounded-lg border"
-                    onChange={handleChange}
-                    value={credentials.correo}
-                    required
-                />
-            </div>
-
-            <div className="flex flex-col gap-2">
-                <label htmlFor="contrasena" className="text-xl">Contraseña:</label>
-                <input
-                    type="password"
-                    id="contrasena"
-                    name="contrasena"
-                    placeholder="Tu contraseña"
-                    className="bg-slate-100 p-3 rounded-lg border"
-                    onChange={handleChange}
-                    value={credentials.contrasena}
-                    required
-                />
-            </div>
-
-            <input
+            </h2>
+            {error && (
+                <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-2 rounded text-center font-semibold">
+                    {error}
+                </div>
+            )}
+            <label className="flex flex-col font-semibold text-sm gap-1">
+                Correo
+                <div className="relative">
+                    <input
+                        type="email"
+                        placeholder="ejemplo@correo.com"
+                        value={correo}
+                        onChange={e => setCorreo(e.target.value)}
+                        required
+                        className="w-full border rounded-lg px-10 py-2 focus:ring focus:ring-blue-300 outline-none shadow-sm transition-all"
+                    />
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-blue-500">
+                        <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2"><rect x="2" y="4" width="14" height="10" rx="2" /><path d="M2 4l7 6 7-6" /></svg>
+                    </span>
+                </div>
+            </label>
+            <label className="flex flex-col font-semibold text-sm gap-1">
+                Contraseña
+                <div className="relative">
+                    <input
+                        type="password"
+                        placeholder="Contraseña"
+                        value={contrasena}
+                        onChange={e => setContrasena(e.target.value)}
+                        required
+                        className="w-full border rounded-lg px-10 py-2 focus:ring focus:ring-blue-300 outline-none shadow-sm transition-all"
+                    />
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
+                        <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2"><rect x="5" y="8" width="8" height="6" rx="1" /><path d="M7 8V6a2 2 0 1 1 4 0v2" /></svg>
+                    </span>
+                </div>
+            </label>
+            <button
                 type="submit"
-                className="bg-blue-600 cursor-pointer w-full p-3 text-white uppercase font-bold rounded-lg hover:bg-blue-700 transition-colors"
-                value="Iniciar Sesión"
-            />
-
-            <p className="text-center text-gray-600 mt-4">
-                ¿No tienes cuenta? <button type="button" onClick={onSwitchToRegister} className="text-blue-600 font-semibold hover:underline">Regístrate aquí</button>
-            </p>
+                className="bg-blue-600 hover:bg-blue-700 text-white text-lg px-4 py-2 rounded-lg font-bold shadow transition-all w-full"
+            >
+                Entrar
+            </button>
         </form>
     );
 }
+
+export default LoginForm;
