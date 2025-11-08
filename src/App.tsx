@@ -105,17 +105,33 @@ function App() {
   // Vista principal (si está autenticado)
   return (
     <>
-      <header className="bg-blue-600 py-8 max-h-72 relative">
-        <h1 className="uppercase text-center font-black text-4xl text-white">
-          PLANIFICADOR DE GASTOS
-        </h1>
-        <button
-          onClick={handleLogout}
-          className="absolute top-6 right-8 bg-red-500 hover:bg-red-600 text-white p-2 rounded-lg font-bold"
-        >
-          Cerrar Sesión
-        </button>
-      </header>
+      <header className="bg-blue-600 py-8 max-h-72 relative flex items-center justify-center">
+  <h1 className="uppercase text-center font-black text-4xl text-white">
+    PLANIFICADOR DE GASTOS
+  </h1>
+
+  {/* Botón de cerrar sesión */}
+  <button
+    onClick={handleLogout}
+    className="absolute top-6 right-8 bg-red-500 hover:bg-red-600 text-white p-2 rounded-lg font-bold"
+  >
+    Cerrar Sesión
+  </button>
+
+  {/* Foto de perfil */}
+  <div
+    onClick={() => window.location.href = "/editar-perfil"} // Aquí puedes usar navigate() si tienes react-router
+    className="absolute top-6 left-8 w-12 h-12 rounded-full bg-white border-2 border-blue-300 overflow-hidden cursor-pointer hover:scale-105 transition-transform duration-200"
+    title="Editar perfil"
+  >
+    <img
+      src={localStorage.getItem("profilePic") || "https://via.placeholder.com/150"} // Imagen guardada o placeholder
+      alt="Perfil"
+      className="w-full h-full object-cover"
+    />
+  </div>
+</header>
+
 
       <div className="max-w-3xl mx-auto bg-white shadow-lg rounded-lg mt-10 p-10">
         <div className="flex items-center justify-between">
