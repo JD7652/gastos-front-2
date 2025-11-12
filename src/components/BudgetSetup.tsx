@@ -1,4 +1,6 @@
 import { useState } from "react";
+import api from "../services/api";
+
 
 interface BudgetSetupProps {
   onBudgetSet: (budget: number) => void;
@@ -21,10 +23,13 @@ export default function BudgetSetup({
       return;
     }
 
+    setGuardando(true);
     try {
-      setGuardando(true);
-      // 🔹 Llamamos a la función del padre (App.tsx)
-      await onBudgetSet(presupuesto);
+      await api.put("/budget", { presupuesto }); // 👈 Actualiza en backend
+      await onBudgetSet(presupuesto); // sincroniza con App
+    } catch (err) {
+      alert("No se pudo guardar el presupuesto en el servidor.");
+      console.error(err);
     } finally {
       setGuardando(false);
     }
