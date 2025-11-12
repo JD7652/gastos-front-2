@@ -1,63 +1,76 @@
-import React, { useState, useEffect } from "react";
+import { useState } from "react";
 
-type Props = {
-    onBudgetSet: (amount: number) => void;
-    initialBudget?: number;
-    onCancel?: () => void;
-};
+interface BudgetSetupProps {
+  onBudgetSet: (budget: number) => void;
+  initialBudget?: number;
+  onCancel: () => void;
+}
 
-export default function BudgetSetup({ onBudgetSet, initialBudget, onCancel }: Props) {
-    const [value, setValue] = useState<string>(initialBudget ? String(initialBudget) : "");
-    const [error, setError] = useState<string>("");
+export default function BudgetSetup({
+  onBudgetSet,
+  initialBudget = 0,
+  onCancel,
+}: BudgetSetupProps) {
+  const [presupuesto, setPresupuesto] = useState<number>(initialBudget || 0);
+  const [guardando, setGuardando] = useState(false);
 
-    useEffect(() => {
-        if (initialBudget !== undefined) setValue(String(initialBudget));
-    }, [initialBudget]);
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (presupuesto <= 0) {
+      alert("Por favor, ingresa un presupuesto válido.");
+      return;
+    }
 
-    const handleSubmit = (e: React.FormEvent) => {
-        e.preventDefault();
-        const num = Number(value);
-        if (!num || num <= 0) {
-            setError("Ingresa un presupuesto válido (mayor a 0)");
-            return;
-        }
-        setError("");
-        onBudgetSet(num);
-        // No hacemos navegación aquí; la lógica de guardado/cierre la maneja App
-    };
+    try {
+      setGuardando(true);
+      // 🔹 Llamamos a la función del padre (App.tsx)
+      await onBudgetSet(presupuesto);
+    } finally {
+      setGuardando(false);
+    }
+  };
 
-    return (
-        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-            <h3 className="text-2xl font-extrabold text-center text-blue-700">¡Definamos tu presupuesto!</h3>
-            <p className="text-center text-gray-600">El presupuesto es la clave para controlar tus gastos. Ingresa tu presupuesto:</p>
+  return (
+    <div className="text-center">
+      <h2 className="text-2xl font-bold text-blue-700 mb-2">
+        ¡Definamos tu presupuesto!
+      </h2>
+      <p className="text-gray-600 mb-6">
+        El presupuesto es la clave para controlar tus gastos. <br />
+        Ingresa tu presupuesto:
+      </p>
 
-            <div className="flex flex-col items-center">
-                <input
-                    className={`border ${error ? "border-red-400" : "border-gray-300"} rounded-lg px-4 py-3 w-72 text-lg`}
-                    placeholder="Escribe aquí tu presupuesto"
-                    value={value}
-                    onChange={(e) => setValue(e.target.value)}
-                    inputMode="numeric"
-                />
-                {error && <p className="text-red-500 mt-2">{error}</p>}
-            </div>
+      <form onSubmit={handleSubmit}>
+        <input
+          type="number"
+          value={presupuesto}
+          onChange={(e) => setPresupuesto(Number(e.target.value))}
+          className="border border-gray-300 rounded-lg px-4 py-2 mb-4 w-full text-center focus:outline-none focus:ring-2 focus:ring-blue-400"
+          placeholder="Ej. 500"
+        />
 
-            <div className="flex justify-center gap-4">
-                <button
-                    type="submit"
-                    className="bg-blue-600 text-white px-6 py-2 rounded-lg font-bold hover:bg-blue-700"
-                >
-                    Guardar presupuesto
-                </button>
+        <div className="flex justify-center gap-3">
+          <button
+            type="submit"
+            disabled={guardando}
+            className={`px-5 py-2 rounded-lg text-white font-semibold transition ${
+              guardando
+                ? "bg-blue-300 cursor-not-allowed"
+                : "bg-blue-600 hover:bg-blue-700"
+            }`}
+          >
+            {guardando ? "Guardando..." : "Guardar presupuesto"}
+          </button>
 
-                <button
-                    type="button"
-                    onClick={() => onCancel ? onCancel() : undefined}
-                    className="bg-gray-200 text-gray-800 px-4 py-2 rounded-lg font-semibold hover:bg-gray-300"
-                >
-                    Cancelar
-                </button>
-            </div>
-        </form>
-    );
+          <button
+            type="button"
+            onClick={onCancel}
+            className="bg-gray-200 hover:bg-gray-300 px-5 py-2 rounded-lg font-semibold"
+          >
+            Cancelar
+          </button>
+        </div>
+      </form>
+    </div>
+  );
 }
