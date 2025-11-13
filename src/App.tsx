@@ -1,10 +1,10 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import AuthPanel from "./components/AuthPanel";
-import BudgetSetup from "./components/BudgetSetup";
 import GastosForm from "./components/GastosForm";
 import GastosList, { type Gasto } from "./components/GastosList";
 import Modal from "react-modal";
 import PresupuestoGrafica from "./components/PresupuestoGrafica";
+import api from "./services/api";
 
 Modal.setAppElement("#root");
 
@@ -13,55 +13,54 @@ function App() {
     () => localStorage.getItem("authToken") !== null
   );
 
-  // Presupuesto (lee desde localStorage si existe)
-  const [budget, setBudget] = useState<number | null>(() => {
-    const stored = localStorage.getItem("userBudget");
-    return stored ? Number(stored) : null;
-  });
-
-  // Modal para introducir/editar presupuesto
-  const [showBudgetModal, setShowBudgetModal] = useState<boolean>(() => {
-    const stored = localStorage.getItem("userBudget");
-    return !stored; // true si no hay presupuesto -> abrir modal al inicio
-  });
-
-  // Gastos y modales existentes
+  const [budget, setBudget] = useState<number | null>(null);
   const [gastos, setGastos] = useState<Gasto[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isBudgetModalOpen, setIsBudgetModalOpen] = useState(false);
+  const [newBudget, setNewBudget] = useState<number | null>(null);
   const [gastoEditado, setGastoEditado] = useState<Gasto | null>(null);
+  const [gastoUpdateFlag, setGastoUpdateFlag] = useState(0);
 
-  // Totales
   const totalGastos = gastos.reduce((acc, g) => acc + g.monto, 0);
   const restante = budget !== null ? Math.max(budget - totalGastos, 0) : 0;
 
-  // Login / Logout
-  const handleLoginOrRegister = () => {
-    setIsAuthenticated(true);
-    const stored = localStorage.getItem("userBudget");
-    setShowBudgetModal(!stored);
-    if (stored) {
-      setBudget(Number(stored));
+  // 🔹 Obtener presupuesto del backend
+  const fetchBudget = async () => {
+    try {
+      const userId = localStorage.getItem("userId");
+      if (!userId) return;
+
+      const res = await api.get(`/usuarios/${userId}`);
+      const userBudget = res.data?.presupuesto ?? 0;
+      setBudget(userBudget);
+      localStorage.setItem("userBudget", String(userBudget));
+    } catch (err) {
+      console.error("Error al obtener presupuesto:", err);
     }
   };
 
+  const handleLoginOrRegister = async () => {
+    setIsAuthenticated(true);
+    await fetchBudget();
+  };
+
   const handleLogout = () => {
-    // borramos solo el token — si quieres borrar presupuesto, descomenta la línea
     localStorage.removeItem("authToken");
-    // localStorage.removeItem('userBudget'); // descomenta si quieres borrar presupuesto al cerrar sesión
+    localStorage.removeItem("userBudget");
+    localStorage.removeItem("userId");
     setIsAuthenticated(false);
     setGastos([]);
+    setBudget(null);
     setIsModalOpen(false);
     setIsEditModalOpen(false);
     setGastoEditado(null);
   };
 
-  // GastosList -> App sync
   const handleGastosActualizados = (nuevaLista: Gasto[]) => {
     setGastos(nuevaLista);
   };
 
-  const [gastoUpdateFlag, setGastoUpdateFlag] = useState(0);
   const handleGastoCreado = () => {
     setIsModalOpen(false);
     setGastoEditado(null);
@@ -74,19 +73,41 @@ function App() {
     setIsEditModalOpen(true);
   };
 
-  // Cuando BudgetSetup devuelve el presupuesto
-  const handleBudgetSet = (newBudget: number) => {
-    setBudget(newBudget);
-    localStorage.setItem("userBudget", String(newBudget));
-    setShowBudgetModal(false);
+  useEffect(() => {
+    if (isAuthenticated) fetchBudget();
+  }, [isAuthenticated]);
+
+  // 🔹 Actualizar presupuesto (solo editar)
+  const handleUpdateBudget = async () => {
+    if (!newBudget || newBudget <= 0) {
+      alert("Ingresa un presupuesto válido.");
+      return;
+    }
+
+    try {
+      const userId = localStorage.getItem("userId");
+      if (!userId) {
+        alert("No se encontró el ID del usuario.");
+        return;
+      }
+
+      // ✅ Actualizar el presupuesto en el backend
+      const response = await api.patch(`/usuarios/${userId}/presupuesto`, {
+        presupuesto: newBudget,
+      });
+
+      // ✅ Actualizar en frontend
+      setBudget(newBudget);
+      localStorage.setItem("userBudget", String(newBudget));
+      setIsBudgetModalOpen(false);
+
+      console.log("✅ Presupuesto actualizado:", response.data);
+    } catch (err) {
+      alert("⚠️ No se pudo actualizar el presupuesto en el servidor.");
+      console.error(err);
+    }
   };
 
-  // Abrir modal para editar presupuesto desde la UI principal
-  const openEditBudgetModal = () => {
-    setShowBudgetModal(true);
-  };
-
-  // Vistas
   if (!isAuthenticated) {
     return (
       <>
@@ -102,55 +123,62 @@ function App() {
     );
   }
 
-  // Vista principal (si está autenticado)
   return (
     <>
       <header className="bg-blue-600 py-8 max-h-72 relative flex items-center justify-center">
-  <h1 className="uppercase text-center font-black text-4xl text-white">
-    PLANIFICADOR DE GASTOS
-  </h1>
+        <h1 className="uppercase text-center font-black text-4xl text-white">
+          PLANIFICADOR DE GASTOS
+        </h1>
 
-  {/* Botón de cerrar sesión */}
-  <button
-    onClick={handleLogout}
-    className="absolute top-6 right-8 bg-red-500 hover:bg-red-600 text-white p-2 rounded-lg font-bold"
-  >
-    Cerrar Sesión
-  </button>
+        <button
+          onClick={handleLogout}
+          className="absolute top-6 right-8 bg-red-500 hover:bg-red-600 text-white p-2 rounded-lg font-bold"
+        >
+          Cerrar Sesión
+        </button>
 
-  {/* Foto de perfil */}
-  <div
-    onClick={() => window.location.href = "/editar-perfil"} // Aquí puedes usar navigate() si tienes react-router
-    className="absolute top-6 left-8 w-12 h-12 rounded-full bg-white border-2 border-blue-300 overflow-hidden cursor-pointer hover:scale-105 transition-transform duration-200"
-    title="Editar perfil"
-  >
-    <img
-      src={localStorage.getItem("profilePic") || "https://via.placeholder.com/150"} // Imagen guardada o placeholder
-      alt="Perfil"
-      className="w-full h-full object-cover"
-    />
-  </div>
-</header>
-
+        <div
+          onClick={() => (window.location.href = "/editar-perfil")}
+          className="absolute top-6 left-8 w-12 h-12 rounded-full bg-white border-2 border-blue-300 overflow-hidden cursor-pointer hover:scale-105 transition-transform duration-200"
+          title="Editar perfil"
+        >
+          <img
+            src={
+              localStorage.getItem("profilePic") ||
+              "https://via.placeholder.com/150"
+            }
+            alt="Perfil"
+            className="w-full h-full object-cover"
+          />
+        </div>
+      </header>
 
       <div className="max-w-3xl mx-auto bg-white shadow-lg rounded-lg mt-10 p-10">
         <div className="flex items-center justify-between">
-          <h2 className="text-2xl font-bold mb-4 text-blue-700">Resumen de tu presupuesto</h2>
-          <div className="mb-4">
-            <button
-              onClick={openEditBudgetModal}
-              className="bg-gray-100 hover:bg-gray-200 text-blue-600 px-3 py-2 rounded-lg font-semibold border border-blue-100"
-            >
-              {budget ? "Editar presupuesto" : "Definir presupuesto"}
-            </button>
-          </div>
+          <h2 className="text-2xl font-bold mb-4 text-blue-700">
+            Resumen de tu presupuesto
+          </h2>
+          <button
+            onClick={() => {
+              setNewBudget(budget ?? 0);
+              setIsBudgetModalOpen(true);
+            }}
+            className="bg-gray-100 hover:bg-gray-200 text-blue-600 px-3 py-2 rounded-lg font-semibold border border-blue-100"
+          >
+            Editar presupuesto
+          </button>
         </div>
 
         <div className="flex flex-col items-center mb-6">
-          <PresupuestoGrafica gastado={totalGastos} disponible={restante} total={budget ?? 0} />
+          <PresupuestoGrafica
+            gastado={totalGastos}
+            disponible={restante}
+            total={budget ?? 0}
+          />
           <div className="mt-4 flex flex-col text-center">
             <span className="font-semibold text-gray-700">
-              Presupuesto total: <span className="text-blue-700">${budget ?? 0}</span>
+              Presupuesto total:{" "}
+              <span className="text-blue-700">${budget ?? 0}</span>
             </span>
             <span className="font-semibold text-gray-700">
               Gastado: <span className="text-red-600">${totalGastos}</span>
@@ -168,6 +196,7 @@ function App() {
           Agregar gasto
         </button>
 
+        {/* Modal agregar gasto */}
         <Modal
           isOpen={isModalOpen}
           onRequestClose={() => setIsModalOpen(false)}
@@ -175,9 +204,13 @@ function App() {
           className="max-w-md mx-auto bg-white shadow-lg rounded-lg p-8 outline-none overflow-visible"
           overlayClassName="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center"
         >
-          <GastosForm presupuestoDisponible={restante} onGastoCreado={handleGastoCreado} />
+          <GastosForm
+            presupuestoDisponible={restante}
+            onGastoCreado={handleGastoCreado}
+          />
         </Modal>
 
+        {/* Modal editar gasto */}
         <Modal
           isOpen={isEditModalOpen}
           onRequestClose={() => {
@@ -195,6 +228,40 @@ function App() {
             onGastoCreado={handleGastoCreado}
           />
         </Modal>
+
+        {/* 🔹 Modal editar presupuesto */}
+        <Modal
+          isOpen={isBudgetModalOpen}
+          onRequestClose={() => setIsBudgetModalOpen(false)}
+          contentLabel="Editar presupuesto"
+          className="max-w-md mx-auto bg-white shadow-lg rounded-lg p-8 outline-none overflow-visible"
+          overlayClassName="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center"
+        >
+          <h2 className="text-xl font-bold text-center mb-4 text-blue-600">
+            Editar Presupuesto
+          </h2>
+          <input
+            type="number"
+            value={newBudget ?? ""}
+            onChange={(e) => setNewBudget(Number(e.target.value))}
+            placeholder="Nuevo presupuesto"
+            className="w-full border border-gray-300 rounded-lg p-2 mb-4"
+          />
+          <div className="flex justify-end gap-3">
+            <button
+              onClick={() => setIsBudgetModalOpen(false)}
+              className="bg-gray-300 hover:bg-gray-400 text-gray-800 px-4 py-2 rounded-lg"
+            >
+              Cancelar
+            </button>
+            <button
+              onClick={handleUpdateBudget}
+              className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg"
+            >
+              Guardar
+            </button>
+          </div>
+        </Modal>
       </div>
 
       <div className="max-w-3xl mx-auto">
@@ -206,20 +273,6 @@ function App() {
           onEditarGasto={handleEditarGasto}
         />
       </div>
-
-      <Modal
-        isOpen={showBudgetModal}
-        onRequestClose={() => setShowBudgetModal(false)}
-        contentLabel="Definir presupuesto"
-        className="max-w-md mx-auto bg-white shadow-lg rounded-lg p-8 outline-none overflow-visible"
-        overlayClassName="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center"
-      >
-        <BudgetSetup
-          onBudgetSet={handleBudgetSet}
-          initialBudget={budget ?? undefined}
-          onCancel={() => setShowBudgetModal(false)}
-        />
-      </Modal>
     </>
   );
 }
