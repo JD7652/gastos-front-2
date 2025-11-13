@@ -18,8 +18,8 @@ function RegisterForm({ onRegister }: RegisterFormProps) {
             await api.post("/auth/register", {
                 nombre,
                 correo,
-                contrasena,
-                presupuesto: 1   // <-- Siempre envía esto y que sea tipo number
+                contrasena,   
+                presupuesto: 0// <-- Siempre envía esto y que sea tipo number
             });
             setSuccess("Registro exitoso. Ahora puedes iniciar sesión.");
             setError("");
