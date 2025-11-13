@@ -12,36 +12,45 @@ function LoginForm({ onLogin }: LoginFormProps) {
   const [loading, setLoading] = useState(false);
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault();
-    setError("");
-    setLoading(true);
+  e.preventDefault();
+  setError("");
+  setLoading(true);
 
-    try {
-      const response = await api.post("/auth/login", { correo, contrasena });
+  try {
+    // 🔹 Limpiar todo antes de iniciar una nueva sesión
+    localStorage.clear();
 
-      // ✅ Verificamos que existan datos válidos
-      if (response.data?.token) {
-        localStorage.setItem("authToken", response.data.token);
-      } else {
-        throw new Error("No se recibió el token del servidor");
-      }
+    const response = await api.post("/auth/login", { correo, contrasena });
 
-      // ✅ Guardamos también el ID del usuario
-      if (response.data?.usuario?.id) {
-        localStorage.setItem("userId", response.data.usuario.id);
-      }
-
-      setLoading(false);
-      if (onLogin) onLogin();
-    } catch (err: any) {
-      console.error("Error al iniciar sesión:", err);
-      setLoading(false);
-      setError(
-        err.response?.data?.message ||
-          "Credenciales incorrectas o error al conectar con el servidor"
-      );
+    if (response.data?.token) {
+      localStorage.setItem("authToken", response.data.token);
+    } else {
+      throw new Error("No se recibió el token del servidor");
     }
+
+    if (response.data?.usuario?.id) {
+      localStorage.setItem("userId", response.data.usuario.id);
+      localStorage.setItem("userEmail", response.data.usuario.correo);
+      if (response.data.usuario.imagen) {
+        localStorage.setItem(
+          "profilePic",
+          `${import.meta.env.VITE_API_URL}/usuarios/photo/${response.data.usuario.imagen}`
+        );
+      }
+    }
+
+    setLoading(false);
+    if (onLogin) onLogin();
+  } catch (err: any) {
+    console.error("Error al iniciar sesión:", err);
+    setLoading(false);
+    setError(
+      err.response?.data?.message ||
+        "Credenciales incorrectas o error al conectar con el servidor"
+    );
   }
+}
+
 
   return (
     <form

@@ -4,6 +4,7 @@ import GastosForm from "./components/GastosForm";
 import GastosList, { type Gasto } from "./components/GastosList";
 import Modal from "react-modal";
 import PresupuestoGrafica from "./components/PresupuestoGrafica";
+import Profile from "./components/Profile"; // 👈 Asegúrate de tener este componente
 import api from "./services/api";
 
 Modal.setAppElement("#root");
@@ -21,6 +22,7 @@ function App() {
   const [newBudget, setNewBudget] = useState<number | null>(null);
   const [gastoEditado, setGastoEditado] = useState<Gasto | null>(null);
   const [gastoUpdateFlag, setGastoUpdateFlag] = useState(0);
+  const [showProfile, setShowProfile] = useState(false); // 👈 NUEVO estado para perfil
 
   const totalGastos = gastos.reduce((acc, g) => acc + g.monto, 0);
   const restante = budget !== null ? Math.max(budget - totalGastos, 0) : 0;
@@ -46,15 +48,11 @@ function App() {
   };
 
   const handleLogout = () => {
-    localStorage.removeItem("authToken");
-    localStorage.removeItem("userBudget");
-    localStorage.removeItem("userId");
+    localStorage.clear();
     setIsAuthenticated(false);
     setGastos([]);
     setBudget(null);
-    setIsModalOpen(false);
-    setIsEditModalOpen(false);
-    setGastoEditado(null);
+    setShowProfile(false);
   };
 
   const handleGastosActualizados = (nuevaLista: Gasto[]) => {
@@ -77,7 +75,7 @@ function App() {
     if (isAuthenticated) fetchBudget();
   }, [isAuthenticated]);
 
-  // 🔹 Actualizar presupuesto (solo editar)
+  // 🔹 Actualizar presupuesto
   const handleUpdateBudget = async () => {
     if (!newBudget || newBudget <= 0) {
       alert("Ingresa un presupuesto válido.");
@@ -91,16 +89,13 @@ function App() {
         return;
       }
 
-      // ✅ Actualizar el presupuesto en el backend
       const response = await api.patch(`/usuarios/${userId}/presupuesto`, {
         presupuesto: newBudget,
       });
 
-      // ✅ Actualizar en frontend
       setBudget(newBudget);
       localStorage.setItem("userBudget", String(newBudget));
       setIsBudgetModalOpen(false);
-
       console.log("✅ Presupuesto actualizado:", response.data);
     } catch (err) {
       alert("⚠️ No se pudo actualizar el presupuesto en el servidor.");
@@ -108,6 +103,7 @@ function App() {
     }
   };
 
+  // 🔹 Si no está autenticado, mostrar login
   if (!isAuthenticated) {
     return (
       <>
@@ -123,6 +119,28 @@ function App() {
     );
   }
 
+  // 🔹 Si el usuario abre su perfil
+  if (showProfile) {
+    return (
+      <>
+        <header className="bg-blue-600 py-6 relative flex items-center justify-center">
+          <h1 className="text-3xl font-bold text-white">Mi Perfil</h1>
+          <button
+            onClick={() => setShowProfile(false)}
+            className="absolute left-6 bg-gray-200 hover:bg-gray-300 text-blue-600 px-3 py-1 rounded-lg font-bold"
+          >
+            ← Volver
+          </button>
+        </header>
+
+        <div className="max-w-3xl mx-auto bg-white shadow-lg rounded-lg mt-10 p-10">
+          <Profile />
+        </div>
+      </>
+    );
+  }
+
+  // 🔹 Vista principal
   return (
     <>
       <header className="bg-blue-600 py-8 max-h-72 relative flex items-center justify-center">
@@ -137,8 +155,9 @@ function App() {
           Cerrar Sesión
         </button>
 
+        {/* 👇 Ahora cambia solo el estado (no redirige) */}
         <div
-          onClick={() => (window.location.href = "/editar-perfil")}
+          onClick={() => setShowProfile(true)}
           className="absolute top-6 left-8 w-12 h-12 rounded-full bg-white border-2 border-blue-300 overflow-hidden cursor-pointer hover:scale-105 transition-transform duration-200"
           title="Editar perfil"
         >
@@ -153,6 +172,7 @@ function App() {
         </div>
       </header>
 
+      {/* 💰 Resumen de presupuesto */}
       <div className="max-w-3xl mx-auto bg-white shadow-lg rounded-lg mt-10 p-10">
         <div className="flex items-center justify-between">
           <h2 className="text-2xl font-bold mb-4 text-blue-700">
@@ -229,7 +249,7 @@ function App() {
           />
         </Modal>
 
-        {/* 🔹 Modal editar presupuesto */}
+        {/* Modal editar presupuesto */}
         <Modal
           isOpen={isBudgetModalOpen}
           onRequestClose={() => setIsBudgetModalOpen(false)}
