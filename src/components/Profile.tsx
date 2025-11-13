@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import api from "../services/api"; // Asegúrate de tener configurado Axios aquí
+import api from "../services/api"; // Axios configurado con baseURL
 
 export default function Profile() {
   const userId = localStorage.getItem("userId");
@@ -21,11 +21,14 @@ export default function Profile() {
       if (!userId) return;
       try {
         const response = await api.get(`/usuarios/${userId}`);
-        const { nombre, correo, foto } = response.data;
+        const { nombre, correo, urlImageCompleta } = response.data;
+
         setUserData({ nombre, correo });
-        if (foto) {
-          setPreview(foto);
-          localStorage.setItem("profilePic", foto);
+
+        // Si el backend devuelve la URL pública completa
+        if (urlImageCompleta) {
+          setPreview(urlImageCompleta);
+          localStorage.setItem("profilePic", urlImageCompleta);
         }
       } catch (err) {
         console.error("Error cargando usuario:", err);
@@ -55,14 +58,24 @@ export default function Profile() {
 
     try {
       setIsUploading(true);
+
+      // 👇 Endpoint correcto y headers
       const response = await api.post(`/usuarios/photo`, formData, {
-        headers: { "Content-Type": "multipart/form-data" },
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
       });
 
-      const nuevaFoto = response.data.foto;
-      setPreview(nuevaFoto);
-      localStorage.setItem("profilePic", nuevaFoto);
-      alert("✅ Foto actualizada con éxito.");
+      // 👇 El backend devuelve { url, fileName }
+      const nuevaFoto = response.data.url;
+
+      if (nuevaFoto) {
+        setPreview(nuevaFoto);
+        localStorage.setItem("profilePic", nuevaFoto);
+        alert("✅ Foto actualizada con éxito.");
+      } else {
+        alert("⚠️ No se recibió URL de la imagen del servidor.");
+      }
     } catch (err) {
       console.error("Error al subir imagen:", err);
       alert("⚠️ Error al subir la imagen.");
@@ -102,13 +115,20 @@ export default function Profile() {
           />
         </div>
 
-        {/* Input para subir foto */}
         <input
           type="file"
+          id="fileInput"
           accept="image/*"
           onChange={handleFileChange}
-          className="block text-sm text-gray-600"
+          className="hidden"
         />
+
+        <button
+          onClick={() => document.getElementById("fileInput")?.click()}
+          className="px-6 py-2 bg-gray-200 rounded-lg hover:bg-gray-300 text-gray-700 font-semibold transition"
+        >
+          Elegir foto
+        </button>
 
         <button
           onClick={handleUpload}
